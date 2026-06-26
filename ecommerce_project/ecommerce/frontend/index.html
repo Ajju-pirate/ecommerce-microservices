@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>E-Commerce Store</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, sans-serif; background: #f5f5f5; color: #1a1a1a; }
+    header { background: #1a1a2e; color: white; padding: 16px 32px; display: flex; justify-content: space-between; align-items: center; }
+    header h1 { font-size: 1.4rem; font-weight: 600; }
+    .auth-bar { display: flex; gap: 10px; align-items: center; font-size: 0.9rem; }
+    .btn { padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer; font-size: 0.9rem; font-weight: 500; }
+    .btn-primary { background: #e94560; color: white; }
+    .btn-secondary { background: #16213e; color: white; }
+    .btn-outline { background: transparent; border: 1px solid white; color: white; }
+    .btn:hover { opacity: 0.85; }
+    main { max-width: 1100px; margin: 0 auto; padding: 32px 16px; }
+    .tabs { display: flex; gap: 8px; margin-bottom: 24px; border-bottom: 2px solid #ddd; padding-bottom: 0; }
+    .tab { padding: 10px 20px; background: none; border: none; cursor: pointer; font-size: 0.95rem; color: #555; border-bottom: 3px solid transparent; margin-bottom: -2px; }
+    .tab.active { color: #e94560; border-bottom-color: #e94560; font-weight: 600; }
+    .section { display: none; }
+    .section.active { display: block; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 20px; }
+    .card { background: white; border-radius: 10px; padding: 20px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+    .card h3 { font-size: 1rem; margin-bottom: 6px; }
+    .card .price { color: #e94560; font-size: 1.2rem; font-weight: 700; margin: 8px 0; }
+    .card .cat { font-size: 0.8rem; color: #888; margin-bottom: 12px; }
+    .form-group { margin-bottom: 14px; }
+    label { display: block; font-size: 0.85rem; font-weight: 500; margin-bottom: 4px; color: #444; }
+    input, select { width: 100%; padding: 9px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 0.9rem; }
+    .alert { padding: 12px 16px; border-radius: 8px; margin-bottom: 16px; font-size: 0.9rem; }
+    .alert-success { background: #d4edda; color: #155724; }
+    .alert-error { background: #f8d7da; color: #721c24; }
+    .badge { display: inline-block; padding: 2px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; }
+    .badge-customer { background: #cce5ff; color: #004085; }
+    .badge-employee { background: #fff3cd; color: #856404; }
+    .order-card { background: white; border-radius: 10px; padding: 20px; margin-bottom: 14px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+    .order-card h4 { margin-bottom: 8px; }
+    .status { padding: 3px 10px; border-radius: 20px; font-size: 0.78rem; font-weight: 600; }
+    .status-confirmed { background: #d4edda; color: #155724; }
+    .status-shipped { background: #cce5ff; color: #004085; }
+    .status-pending { background: #fff3cd; color: #856404; }
+    .modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.4); z-index:100; align-items:center; justify-content:center; }
+    .modal-overlay.open { display:flex; }
+    .modal { background:white; border-radius:12px; padding:32px; width:400px; max-width:90%; }
+    .modal h2 { margin-bottom:20px; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>🛒 ShopFast</h1>
+  <div class="auth-bar">
+    <span id="user-info" style="display:none">
+      👤 <strong id="username-display"></strong>
+      <span id="role-badge" class="badge"></span>
+    </span>
+    <button class="btn btn-outline" id="login-btn" onclick="openModal('login')">Login</button>
+    <button class="btn btn-primary" id="register-btn" onclick="openModal('register')">Register</button>
+    <button class="btn btn-outline" id="logout-btn" style="display:none" onclick="logout()">Logout</button>
+  </div>
+</header>
+
+<main>
+  <div id="alert-area"></div>
+
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('catalog')">🛍 Catalog</button>
+    <button class="tab" onclick="switchTab('orders')">📦 My Orders</button>
+    <button class="tab" id="employee-tab" style="display:none" onclick="switchTab('employee')">🏭 Manage</button>
+  </div>
+
+  <!-- CATALOG -->
+  <div class="section active" id="tab-catalog">
+    <div id="products-grid" class="grid"></div>
+  </div>
+
+  <!-- ORDERS -->
+  <div class="section" id="tab-orders">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+      <h2>My Orders</h2>
+      <button class="btn btn-primary" onclick="loadOrders()">Refresh</button>
+    </div>
+    <div id="orders-list"></div>
+  </div>
+
+  <!-- EMPLOYEE PANEL -->
+  <div class="section" id="tab-employee">
+    <div class="card" style="max-width:500px;margin-bottom:24px">
+      <h3 style="margin-bottom:16px">Add Warehouse</h3>
+      <div class="form-group"><label>Name</label><input id="wh-name" placeholder="e.g. East Hub"></div>
+      <div class="form-group"><label>Location</label><input id="wh-location" placeholder="e.g. Chennai"></div>
+      <button class="btn btn-primary" onclick="addWarehouse()">Add Warehouse</button>
+    </div>
+    <div class="card" style="max-width:500px">
+      <h3 style="margin-bottom:16px">Add Product to Catalog</h3>
+      <div class="form-group"><label>Name</label><input id="p-name" placeholder="Product name"></div>
+      <div class="form-group"><label>SKU</label><input id="p-sku" placeholder="e.g. ELEC-003"></div>
+      <div class="form-group"><label>Price (₹)</label><input id="p-price" type="number" placeholder="499"></div>
+      <div class="form-group"><label>Category</label><input id="p-cat" placeholder="electronics / furniture / books"></div>
+      <div class="form-group"><label>Description</label><input id="p-desc" placeholder="Short description"></div>
+      <button class="btn btn-primary" onclick="addProduct()">Add Product</button>
+    </div>
+  </div>
+</main>
+
+<!-- LOGIN MODAL -->
+<div class="modal-overlay" id="modal-login">
+  <div class="modal">
+    <h2>Login</h2>
+    <div class="form-group"><label>Username</label><input id="login-username" placeholder="your username"></div>
+    <div class="form-group"><label>Password</label><input id="login-password" type="password" placeholder="••••••••"></div>
+    <div style="display:flex;gap:10px;margin-top:8px">
+      <button class="btn btn-primary" style="flex:1" onclick="login()">Login</button>
+      <button class="btn btn-secondary" onclick="closeModal('login')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- REGISTER MODAL -->
+<div class="modal-overlay" id="modal-register">
+  <div class="modal">
+    <h2>Create Account</h2>
+    <div class="form-group"><label>Username</label><input id="reg-username" placeholder="your username"></div>
+    <div class="form-group"><label>Password</label><input id="reg-password" type="password" placeholder="••••••••"></div>
+    <div class="form-group">
+      <label>Account Type</label>
+      <select id="reg-role">
+        <option value="customer">Customer</option>
+        <option value="employee">Employee</option>
+      </select>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:8px">
+      <button class="btn btn-primary" style="flex:1" onclick="register()">Register</button>
+      <button class="btn btn-secondary" onclick="closeModal('register')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- ORDER MODAL -->
+<div class="modal-overlay" id="modal-order">
+  <div class="modal">
+    <h2>Place Order</h2>
+    <p id="order-product-name" style="margin-bottom:16px;font-weight:600;color:#e94560"></p>
+    <div class="form-group"><label>Quantity</label><input id="order-qty" type="number" value="1" min="1"></div>
+    <div class="form-group">
+      <label>Warehouse</label>
+      <select id="order-warehouse">
+        <option value="1">North Hub — Delhi</option>
+        <option value="2">South Hub — Hyderabad</option>
+        <option value="3">West Hub — Mumbai</option>
+      </select>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:8px">
+      <button class="btn btn-primary" style="flex:1" onclick="confirmOrder()">Confirm Order</button>
+      <button class="btn btn-secondary" onclick="closeModal('order')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const API = "http://localhost:8000";
+let token = localStorage.getItem("token");
+let role = localStorage.getItem("role");
+let username = localStorage.getItem("username");
+let pendingOrderSku = null;
+
+function authHeaders() {
+  return { "Content-Type": "application/json", "Authorization": `Bearer ${token}` };
+}
+
+function showAlert(msg, type="success") {
+  const a = document.getElementById("alert-area");
+  a.innerHTML = `<div class="alert alert-${type}">${msg}</div>`;
+  setTimeout(() => a.innerHTML = "", 4000);
+}
+
+function openModal(name) { document.getElementById(`modal-${name}`).classList.add("open"); }
+function closeModal(name) { document.getElementById(`modal-${name}`).classList.remove("open"); }
+
+function switchTab(name) {
+  document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+  document.querySelectorAll(".section").forEach(s => s.classList.remove("active"));
+  event.target.classList.add("active");
+  document.getElementById(`tab-${name}`).classList.add("active");
+  if (name === "orders") loadOrders();
+}
+
+function updateUI() {
+  const loggedIn = !!token;
+  document.getElementById("login-btn").style.display = loggedIn ? "none" : "";
+  document.getElementById("register-btn").style.display = loggedIn ? "none" : "";
+  document.getElementById("logout-btn").style.display = loggedIn ? "" : "none";
+  document.getElementById("user-info").style.display = loggedIn ? "" : "none";
+  document.getElementById("username-display").textContent = username || "";
+  const badge = document.getElementById("role-badge");
+  badge.textContent = role || "";
+  badge.className = `badge badge-${role}`;
+  document.getElementById("employee-tab").style.display = role === "employee" ? "" : "none";
+}
+
+async function login() {
+  const body = new URLSearchParams({
+    username: document.getElementById("login-username").value,
+    password: document.getElementById("login-password").value,
+  });
+  const r = await fetch(`${API}/auth/login`, { method: "POST", body, headers: {"Content-Type": "application/x-www-form-urlencoded"} });
+  const data = await r.json();
+  if (!r.ok) return showAlert(data.detail, "error");
+  token = data.access_token; role = data.role;
+  username = document.getElementById("login-username").value;
+  localStorage.setItem("token", token);
+  localStorage.setItem("role", role);
+  localStorage.setItem("username", username);
+  closeModal("login");
+  updateUI();
+  showAlert(`Welcome back, ${username}!`);
+}
+
+async function register() {
+  const r = await fetch(`${API}/auth/register`, {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({
+      username: document.getElementById("reg-username").value,
+      password: document.getElementById("reg-password").value,
+      role: document.getElementById("reg-role").value,
+    })
+  });
+  const data = await r.json();
+  if (!r.ok) return showAlert(data.detail, "error");
+  closeModal("register");
+  showAlert("Account created! Please login.");
+}
+
+function logout() {
+  token = role = username = null;
+  localStorage.clear();
+  updateUI();
+}
+
+async function loadProducts() {
+  const r = await fetch(`${API}/catalog/products`);
+  const products = await r.json();
+  document.getElementById("products-grid").innerHTML = products.map(p => `
+    <div class="card">
+      <div class="cat">${p.category} · SKU: ${p.sku}</div>
+      <h3>${p.name}</h3>
+      <p style="font-size:0.85rem;color:#666;margin-bottom:8px">${p.description}</p>
+      <div class="price">₹${p.price.toFixed(2)}</div>
+      <button class="btn btn-primary" style="width:100%" onclick="openOrderModal('${p.sku}', '${p.name}')">
+        Add to Order
+      </button>
+    </div>
+  `).join("");
+}
+
+function openOrderModal(sku, name) {
+  if (!token) return showAlert("Please login to place an order", "error");
+  pendingOrderSku = sku;
+  document.getElementById("order-product-name").textContent = name;
+  openModal("order");
+}
+
+async function confirmOrder() {
+  if (!pendingOrderSku) return;
+  const r = await fetch(`${API}/orders`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: JSON.stringify({
+      warehouse_id: parseInt(document.getElementById("order-warehouse").value),
+      items: [{ product_sku: pendingOrderSku, quantity: parseInt(document.getElementById("order-qty").value) }]
+    })
+  });
+  const data = await r.json();
+  closeModal("order");
+  if (!r.ok) return showAlert(data.detail, "error");
+  showAlert(`Order #${data.id} placed! Total: ₹${data.total_price.toFixed(2)}`);
+}
+
+async function loadOrders() {
+  if (!token) return document.getElementById("orders-list").innerHTML = "<p>Please login to view orders.</p>";
+  const r = await fetch(`${API}/orders`, { headers: authHeaders() });
+  const orders = await r.json();
+  if (!orders.length) { document.getElementById("orders-list").innerHTML = "<p>No orders yet.</p>"; return; }
+  document.getElementById("orders-list").innerHTML = orders.map(o => `
+    <div class="order-card">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <h4>Order #${o.id}</h4>
+        <span class="status status-${o.status}">${o.status}</span>
+      </div>
+      <p style="color:#666;font-size:0.85rem;margin:6px 0">Warehouse ID: ${o.warehouse_id} · ${new Date(o.created_at).toLocaleString()}</p>
+      <p><strong>Total:</strong> ₹${o.total_price.toFixed(2)}</p>
+      <ul style="margin-top:8px;padding-left:16px">
+        ${o.items.map(i => `<li style="font-size:0.9rem">${i.product_name} × ${i.quantity} @ ₹${i.unit_price}</li>`).join("")}
+      </ul>
+    </div>
+  `).join("");
+}
+
+async function addWarehouse() {
+  const r = await fetch(`${API}/warehouse/warehouses`, {
+    method: "POST", headers: authHeaders(),
+    body: JSON.stringify({ name: document.getElementById("wh-name").value, location: document.getElementById("wh-location").value })
+  });
+  const data = await r.json();
+  if (!r.ok) return showAlert(data.detail, "error");
+  showAlert(`Warehouse "${data.name}" created!`);
+}
+
+async function addProduct() {
+  const r = await fetch(`${API}/catalog/products`, {
+    method: "POST",
+    headers: {"Content-Type":"application/json"},
+    body: JSON.stringify({
+      name: document.getElementById("p-name").value,
+      sku: document.getElementById("p-sku").value,
+      price: parseFloat(document.getElementById("p-price").value),
+      category: document.getElementById("p-cat").value,
+      description: document.getElementById("p-desc").value,
+    })
+  });
+  const data = await r.json();
+  if (!r.ok) return showAlert(data.detail, "error");
+  showAlert("Product added to catalog!");
+  loadProducts();
+}
+
+updateUI();
+loadProducts();
+</script>
+</body>
+</html>
